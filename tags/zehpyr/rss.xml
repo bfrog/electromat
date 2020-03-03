@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>Electromatic.us</title>
+        <link>https%3A//electromatic.us</link>
+        <description></description>
+        <generator>Zola</generator>
+        <language>en</language>
+        <atom:link href="https%3A//electromatic.us/tags/zehpyr/rss.xml" rel="self" type="application/rss+xml"/>
+        <lastBuildDate>Tue, 21 May 2019 11:57:00 +0000</lastBuildDate>
+        
+            <item>
+                <title>Zephyr RTIO</title>
+                <pubDate>Tue, 21 May 2019 11:57:00 +0000</pubDate>
+                <link>https%3A//electromatic.us/zephyr-rtio/</link>
+                <guid>https%3A//electromatic.us/zephyr-rtio/</guid>
+                <description>&lt;h2 id=&quot;zephyr&quot;&gt;Zephyr&lt;&#x2F;h2&gt;
+&lt;p&gt;For the past year or so I&#x27;ve been working on ever more complex electronics
+devices and firmware. Devices that have greater needs for performance
+sensing, processing, and communicating. Specifically I have a chromatography
+control system and a sport training device I&#x27;ve been working on.&lt;&#x2F;p&gt;
+&lt;p&gt;Writing infinite loop state machines works well to a point. After a certain
+level of complexity I&#x27;d argue its easier to reason about several state machines
+that communicate. I learned that the hard way when creating a soft realtime
+control system for chromatography, a story for another time.&lt;&#x2F;p&gt;
+&lt;p&gt;An RTOS provides the means to structure a program with communicating state
+machines. It does not prevent a devolvement into spaghetti, data race,
+bug ridden nightmare fuel.&lt;&#x2F;p&gt;
+&lt;p&gt;Zephyr is a fantastic RTOS, with a large test suite covering its core
+functionality, soc drivers, and board support packages. &lt;&#x2F;p&gt;
+&lt;p&gt;What it lacked however for both of the projects I&#x27;ve been working on was
+a driver API that made sense for my use case. I need to stream compact,
+potentially processed by digital filters, sampled data streams. So
+sensors. Fast ones!&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;the-status-quo&quot;&gt;The Status Quo&lt;&#x2F;h2&gt;
+&lt;p&gt;It&#x27;s worth noting that the Zephyr API for sensors (current as of this
+writing still) is quite simple. That&#x27;s a good thing!&lt;&#x2F;p&gt;
+&lt;p&gt;A sample from Zephyr makes it clear whats involved.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;zephyrproject-rtos&#x2F;zephyr&#x2F;blob&#x2F;zephyr-v1.14.0&#x2F;samples&#x2F;sensor&#x2F;magn_polling&#x2F;src&#x2F;main.c&quot;&gt;Sensor Sample Snippet&lt;&#x2F;a&gt;&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#2b303b;&quot;&gt;
+&lt;span style=&quot;color:#b48ead;&quot;&gt;int&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt; ret;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;struct&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt; sensor_value value_x, value_y, value_z;
+
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;while &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;1&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;) {
+    ret = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;sensor_sample_fetch&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(dev);
+    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;if &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(ret) {
+        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;printk&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;sensor_sample_fetch failed ret &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;%d&lt;&#x2F;span&gt;&lt;span style=&quot;color:#96b5b4;&quot;&gt;\n&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;&amp;quot;, ret);
+        &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;return&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;;
+    }
+
+    ret = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;sensor_channel_get&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(dev, SENSOR_CHAN_MAGN_X, &amp;amp;value_x);
+    ret = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;sensor_channel_get&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(dev, SENSOR_CHAN_MAGN_Y, &amp;amp;value_y);
+    ret = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;sensor_channel_get&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(dev, SENSOR_CHAN_MAGN_Z, &amp;amp;value_z);
+    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#96b5b4;&quot;&gt;printf&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;( x y z ) = ( &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;%f  %f  %f&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt; )&lt;&#x2F;span&gt;&lt;span style=&quot;color:#96b5b4;&quot;&gt;\n&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;&amp;quot;,
+            &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;sensor_value_to_double&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&amp;amp;value_x),
+            &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;sensor_value_to_double&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&amp;amp;value_y),
+            &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;sensor_value_to_double&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&amp;amp;value_z));
+
+    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;k_sleep&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;500&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;);
+}
+&lt;&#x2F;span&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;This API is convienent and straightforward.&lt;&#x2F;p&gt;
+&lt;p&gt;This API got me quite far with &lt;em&gt;most&lt;&#x2F;em&gt; what I was trying to do. In fact
+the product at &lt;a href=&quot;http:&#x2F;&#x2F;baseballtech.com&quot;&gt;Baseball Tech&lt;&#x2F;a&gt; uses the
+Zephyr sensors API in its interrupt driven form though I did have to
+do some tweaking.&lt;&#x2F;p&gt;
+&lt;p&gt;What I wanted to be able to do was...&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Use the hardware FIFO on many of these devices to free up time on my cpu,
+the Nordic NRF52840 is quite a SoC but time is finite and much of it was
+being used by other things, like bluetooth.&lt;&#x2F;li&gt;
+&lt;li&gt;Not work with already converted values, I wanted the values that the sensor
+gave directly in the native sensor format (usually 16 bit integers) primarily
+because of their compact size.&lt;&#x2F;li&gt;
+&lt;li&gt;Change the state of the device at runtime safely.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Do the above without necessarily tacking on a bunch of custom
+device specific functionality like I was doing.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;reflecting-on-the-first-attempt&quot;&gt;Reflecting on the first attempt&lt;&#x2F;h2&gt;
+&lt;p&gt;My first attempt at creating a new API that checked off the bullet list
+above was based on my own experience and the opinions described in a few
+issues on github.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;zephyrproject-rtos&#x2F;zephyr&#x2F;issues&#x2F;1387&quot;&gt;Issue 1387&lt;&#x2F;a&gt;
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;zephyrproject-rtos&#x2F;zephyr&#x2F;issues&#x2F;13718&quot;&gt;Issue 13718&lt;&#x2F;a&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;The first attempt really took a lot of inspiration from Linux&#x27;s IIO API.
+After all, Linux often times does things right.&lt;&#x2F;p&gt;
+&lt;p&gt;The driver was centered around a typified ringbuffer inspired by linux&#x27;s
+k_fifo, tailored for microcontrollers for streaming data from drivers to
+applications. Along with statically defined device and channel attribute
+descriptions similiar to IIO, but read and written to using a tagged type
+union to represent each attributes value.&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;bfrog&#x2F;zephyr&#x2F;tree&#x2F;zio&quot;&gt;ZIO Branch&lt;&#x2F;a&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;The API based on IIO however really didn&#x27;t solve &lt;strong&gt;my&lt;&#x2F;strong&gt; problems well.&lt;&#x2F;p&gt;
+&lt;p&gt;DMA usage with a ringbuffer means I would need to have written a memory
+allocator on top of it to get contiguous sections. Some form of tracking
+when the end of the buffer has been skipped over. A lot more work. I&#x27;m lazy
+and I wanted something working &lt;strong&gt;now-ish&lt;&#x2F;strong&gt;.&lt;&#x2F;p&gt;
+&lt;p&gt;Changing the state of the device left a lot of confusion about the ringbuffer.
+At what point in the ringbuffer for example was the device in state 1
+rather than say state 2, where state 1 had 2 8 bit values and state 2 
+has 4 16 bit signed values and a timestamp? It also left me wondering
+how it would ever be possible to set even a simple attribute like
+sample rate when that sample rate is often times dependent on several
+other configuration options. Filter options, power mode options, fifo
+enabled options. So if you write to one attribute, a trigger occurs,
+then write to the next attribute, was the data inbetween valid? Did
+you know what format it was in, what rate the data was sampled at?&lt;&#x2F;p&gt;
+&lt;p&gt;The attributes themselves were not necessarily simple to provide
+or work with in either the driver or the application.&lt;&#x2F;p&gt;
+&lt;p&gt;Having the driver API require a large number of attributes to be defined,
+using a ringbuffer, and other decisions made on the branch turned out to
+be in my opinion a dead end for the above reasoning. I&#x27;m sorry to those
+that started to build on that experiment of mine in earnest. There were a few&lt;&#x2F;p&gt;
+&lt;p&gt;&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;zephyrproject-rtos&#x2F;zephyr&#x2F;pull&#x2F;16119&quot;&gt;PR 16119&lt;&#x2F;a&gt;
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;zephyrproject-rtos&#x2F;zephyr&#x2F;pull&#x2F;16456&quot;&gt;PR 16456&lt;&#x2F;a&gt;
+&lt;a href=&quot;https:&#x2F;&#x2F;github.com&#x2F;zephyrproject-rtos&#x2F;zephyr&#x2F;pull&#x2F;17921&quot;&gt;PR 17921&lt;&#x2F;a&gt;&lt;&#x2F;p&gt;
+&lt;p&gt;Maybe attributes could be salvaged, but the API wasn&#x27;t really helping me
+directly solve my problems. It was, it turns out, a bad API for what I was
+trying to do. Hindsight is always of course clearer. I do feel like I should
+have seen the issues sooner, but it took writing a driver myself and
+seeing a few others starting to write drivers to realize the significant
+downsides.&lt;&#x2F;p&gt;
+&lt;h2 id=&quot;second-attempt-a-work-in-progress&quot;&gt;Second Attempt, A Work in Progress&lt;&#x2F;h2&gt;
+&lt;p&gt;In my second attempt I focused more on what is the minimum API &lt;strong&gt;I&lt;&#x2F;strong&gt; need to get
+the checklist ticked off. The results of that thought experiment lead me
+to the following pseudo C sample snippet.&lt;&#x2F;p&gt;
+&lt;pre style=&quot;background-color:#2b303b;&quot;&gt;
+&lt;span style=&quot;color:#c0c5ce;&quot;&gt;
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;RTIO_BLOCK_MEMPOOL_ALLOCATOR&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(blockalloc, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;64&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;512&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;);
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;K_FIFO_DEFINE&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(myfifo);
+
+&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;int &lt;&#x2F;span&gt;&lt;span style=&quot;color:#8fa1b3;&quot;&gt;main&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;() {
+    &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;struct&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt; device *mydev = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;device_get_binding&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(SENSOR_DEV_NAME);
+
+   &lt;&#x2F;span&gt;&lt;span style=&quot;color:#65737e;&quot;&gt;&#x2F;* Using the ST H3LIS3331DL as a sample here *&#x2F;
+   &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;struct &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;mysensor_config = {
+       .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;sample_rate &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= MYSENSOR_1000HZ,
+       .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;scale &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= MYSENSOR_200G, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#65737e;&quot;&gt;&#x2F;* yes this exists in the H3LIS331DL! *&#x2F;
+   &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;};
+   
+   &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;struct&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt; rtio_configuration config =  { 
+       .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;output_config &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= {
+           .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;fifo &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= myfifo, 
+           .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;timeout &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= K_FOREVER,
+           .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;byte_size &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;512
+       &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;},
+       .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;trigger_config &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= {
+           .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;trigger_source &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= RTIO_TRIGGER_GPIO,
+           .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;gpio &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= {
+               .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;device &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= MYGPIO_DEV,
+               .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;pin &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;4&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;,
+           }
+       },
+      .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;allocator &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= blockalloc, 
+      .&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;driver_config &lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;= &amp;amp;mysensor_config
+   };
+   
+   &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;int&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt; res = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;rtio_configure&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(mydev, &amp;amp;config);
+   &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;_ASSERT&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(res == &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;);
+
+   &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;struct&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt; rtio_sensor_reader reader;
+   &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;while&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;true&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;) {
+       &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;struct&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt; rtio_block *block = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;k_fifo_get&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(myfifo, K_FOREVER);
+       &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;struct&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt; rtio_sensor_channel channels[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;4&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;] = {
+           &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;RTIO_SENSOR_TIMESTAMP_CHANNEL&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(),
+           &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;RTIO_SENSOR_CHANNEL&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;float&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, SENSOR_ACC_X, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, SENSOR_SCALED | SENSOR_SI),
+           &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;RTIO_SENSOR_CHANNEL&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;float&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, SENSOR_ACC_Y, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, SENSOR_SCALED | SENSOR_SI),
+           &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;RTIO_SENSOR_CHANNEL&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;float&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, SENSOR_ACC_Z, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, SENSOR_SCALED | SENSOR_SI),
+       };
+       res = &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;rtio_sensor_reader&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(mydev, myblock, &amp;amp;myreader, channels, sizeof(channels));
+       &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;_ASSERT&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(res == &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;);
+       &lt;&#x2F;span&gt;&lt;span style=&quot;color:#b48ead;&quot;&gt;while&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;rtio_sensor_reader_next&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&amp;amp;myreader)) {
+           &lt;&#x2F;span&gt;&lt;span style=&quot;color:#96b5b4;&quot;&gt;printf&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(&amp;quot;&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;cycle: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;%d&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;, acc (m&#x2F;s^2) x,y,z: &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;%f&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;%f&lt;&#x2F;span&gt;&lt;span style=&quot;color:#a3be8c;&quot;&gt;, &lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;%f&lt;&#x2F;span&gt;&lt;span style=&quot;color:#96b5b4;&quot;&gt;\n&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;&amp;quot;, channels[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;0&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;].&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;value&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;.&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;u32&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, channels[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;1&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;].&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;value&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;.&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;f32&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, channels[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;2&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;].&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;value&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;.&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;f32&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;, channels[&lt;&#x2F;span&gt;&lt;span style=&quot;color:#d08770;&quot;&gt;3&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;].&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;value&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;.&lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;f32&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;);
+       }
+       &lt;&#x2F;span&gt;&lt;span style=&quot;color:#bf616a;&quot;&gt;rtio_block_free&lt;&#x2F;span&gt;&lt;span style=&quot;color:#c0c5ce;&quot;&gt;(allocator, block);
+    }
+}
+&lt;&#x2F;span&gt;&lt;&#x2F;pre&gt;
+&lt;p&gt;Configuration is now a single call to &lt;code&gt;rtio_configure&lt;&#x2F;code&gt;. This includes
+a way of allocating contiguous blocks, a place to put blocks that are done being
+written to, and when to do so. It also includes what drives the reads, whether
+its a GPIO interrupt, hardware timer, or a function all done in a forever loop
+with a sleep. All of these options lead to calling&lt;code&gt;rtio_trigger&lt;&#x2F;code&gt;. With some
+convienence sprinkled in.&lt;&#x2F;p&gt;
+&lt;p&gt;To implement this API drivers need to implement three C functions and optionally
+define a configuration struct. The first attempt had close to a dozen API calls.&lt;&#x2F;p&gt;
+&lt;p&gt;Optionally a driver can extend the streaming API by providing a reader which
+lets the application use the device almost exactly like the previous sensor API.
+Some additional features this API provides are all channels can be fetched at
+once, and the value may be converted to other numerical formats. The results
+may be optionally scaled and converted to SI units. There are of course costs to
+doing those conversions and providing that functionality.&lt;&#x2F;p&gt;
+&lt;p&gt;The end results of this API are that&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;The number of functions a driver must implement is reduced.&lt;&#x2F;li&gt;
+&lt;li&gt;DMA transfers are straightforward.&lt;&#x2F;li&gt;
+&lt;li&gt;Losing samples is less likely, so long as there&#x27;s enough time to process 
+the data at some point and buffers are large enough.&lt;&#x2F;li&gt;
+&lt;li&gt;Latency of data can be tuned as needed by the application with the timeout and
+byte_size output config options.&lt;&#x2F;li&gt;
+&lt;li&gt;Configuration, ordering, and verification of configurations are possible.&lt;&#x2F;li&gt;
+&lt;li&gt;State of the device for data buffers is clear.&lt;&#x2F;li&gt;
+&lt;li&gt;Timestamps, computed or stored, and virtual sensors could be easily provided
+in the blocks, the reader is defined by the driver and channel types can be
+added easily.&lt;&#x2F;li&gt;
+&lt;li&gt;Devices have 2 functions they must implement, and a third optional function if
+the device is like a sensor where you&#x27;d like to provide a way to interpret
+the readings semantically.&lt;&#x2F;li&gt;
+&lt;li&gt;Devices have a lot of room to optimize most if not all branching on reading
+out data. Its very sensible that each channel would have a read function
+associated with it.&lt;&#x2F;li&gt;
+&lt;li&gt;Multiple channels of the same physical measurement are possible, the 0 in
+the RTIO_SENSOR_CHANNEL macros is an added identifier describing which
+channel of that type to get data for.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;This API is a work in progress now on several branches. Work is ongoing
+and I hope to have something to show for my efforts for Zephyr 2.2!&lt;&#x2F;p&gt;
+&lt;p&gt;Future improvements once the initial API is wrapped up.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Provide fixed point formats that are DSP instruction friendly on ARM,
+CMSIS DSP in particular has &lt;code&gt;q7_t, q15_t, and q31_t&lt;&#x2F;code&gt;. The Cortex M4
+in particular has several mutiply and accumulate functions for smaller
+types that CMSIS DSP takes advantage of.&lt;&#x2F;li&gt;
+&lt;li&gt;Provide an input_configuration for writing to devices. Many devices
+you can upload firmware to. This would allow both read and write
+functionality. This might mean &lt;code&gt;rtio_trigger&lt;&#x2F;code&gt; would need to be
+better thought out for reads and writes.&lt;&#x2F;li&gt;
+&lt;li&gt;In the future the thinking is rtio_confgure will take a configuration name
+defined by devicetree. This would avoid the large number of pointers being
+passed from the application to the kernel preventing user mode usage.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+&lt;p&gt;Things this API does not do that have been discussed, some of which
+would be potentially useful in the future.&lt;&#x2F;p&gt;
+&lt;ul&gt;
+&lt;li&gt;Dynamic devices, its expected your application knows which device its
+using, or atleast one of several devices. exists and could be checked
+by calling &lt;code&gt;rtio_configure&lt;&#x2F;code&gt; for each.&lt;&#x2F;li&gt;
+&lt;li&gt;Device attributes of any kind, in the future it &lt;em&gt;may&lt;&#x2F;em&gt; be sensible to 
+add back in some of the device attributes from the first attempt in a
+more limited, read only, manner.&lt;&#x2F;li&gt;
+&lt;&#x2F;ul&gt;
+</description>
+            </item>
+        
+    </channel>
+</rss>

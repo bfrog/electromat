@@ -1,0 +1,2 @@
+User-agent: *
+Sitemap: https://electromatic.us/sitemap.xml
